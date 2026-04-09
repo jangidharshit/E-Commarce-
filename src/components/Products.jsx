@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import { useDispatch } from "react-redux";
 import { addCart } from "../redux/action";
 
@@ -12,12 +12,17 @@ const Products = () => {
   const [data, setData] = useState([]);
   const [filter, setFilter] = useState([]);
   const [loading, setLoading] = useState(false);
-  const componentMounted = useRef(true);
 
   const dispatch = useDispatch();
 
+  // 🔥 FIXED ADD TO CART
   const addProduct = (product) => {
-    dispatch(addCart(product));
+    const updatedProduct = {
+      ...product,
+      image: product.thumbnail || product.image, // ✅ FIX
+    };
+
+    dispatch(addCart(updatedProduct));
     toast.success("Added to cart");
   };
 
@@ -25,40 +30,39 @@ const Products = () => {
     const getProducts = async () => {
       setLoading(true);
       try {
-        const response = await fetch("https://fakestoreapi.com/products/");
-        if (!response.ok) throw new Error("Failed to fetch products");
-        const products = await response.json();
+        const response = await fetch("https://dummyjson.com/products");
 
-        if (componentMounted.current) {
-          setData(products);
-          setFilter(products);
-          setLoading(false);
-        }
+        if (!response.ok) throw new Error("API failed");
+
+        const result = await response.json();
+
+        setData(result.products);
+        setFilter(result.products);
       } catch (error) {
-        console.error(error);
+        console.log("API failed, loading local JSON");
+
+        const local = await fetch("/products.json");
+        const localData = await local.json();
+
+        setData(localData);
+        setFilter(localData);
+      } finally {
         setLoading(false);
       }
     };
 
     getProducts();
-
-    return () => {
-      componentMounted.current = false;
-    };
   }, []);
 
   const Loading = () => {
     return (
       <>
-        <div className="col-12 py-5 text-center">
-          <Skeleton height={40} width={560} />
+        <div className="col-12 text-center py-5">
+          <Skeleton height={40} width={500} />
         </div>
-        {[...Array(7)].map((_, index) => (
-          <div
-            key={index}
-            className="col-md-4 col-sm-6 col-xs-8 col-12 mb-4"
-          >
-            <Skeleton height={592} />
+        {[...Array(6)].map((_, i) => (
+          <div key={i} className="col-md-4 col-sm-6 col-12 mb-4">
+            <Skeleton height={400} />
           </div>
         ))}
       </>
@@ -73,67 +77,58 @@ const Products = () => {
   const ShowProducts = () => {
     return (
       <>
+        {/* FILTER */}
         <div className="buttons text-center py-5">
-          <button
-            className="btn btn-outline-dark btn-sm m-2"
-            onClick={() => setFilter(data)}
-          >
+          <button className="btn btn-outline-dark m-2" onClick={() => setFilter(data)}>
             All
           </button>
-          <button
-            className="btn btn-outline-dark btn-sm m-2"
-            onClick={() => filterProduct("men's clothing")}
-          >
-            Men's Clothing
+          <button className="btn btn-outline-dark m-2" onClick={() => filterProduct("smartphones")}>
+            Smartphones
           </button>
-          <button
-            className="btn btn-outline-dark btn-sm m-2"
-            onClick={() => filterProduct("women's clothing")}
-          >
-            Women's Clothing
+          <button className="btn btn-outline-dark m-2" onClick={() => filterProduct("laptops")}>
+            Laptops
           </button>
-          <button
-            className="btn btn-outline-dark btn-sm m-2"
-            onClick={() => filterProduct("jewelery")}
-          >
-            Jewelery
+          <button className="btn btn-outline-dark m-2" onClick={() => filterProduct("fragrances")}>
+            Fragrances
           </button>
-          <button
-            className="btn btn-outline-dark btn-sm m-2"
-            onClick={() => filterProduct("electronics")}
-          >
-            Electronics
+          <button className="btn btn-outline-dark m-2" onClick={() => filterProduct("skincare")}>
+            Skincare
           </button>
         </div>
 
+        {/* PRODUCTS */}
         {filter.map((product) => (
-          <div
-            id={product.id}
-            key={product.id}
-            className="col-md-4 col-sm-6 col-xs-8 col-12 mb-4"
-          >
+          <div key={product.id} className="col-md-4 col-sm-6 col-12 mb-4">
             <div className="card text-center h-100">
+
               <img
                 className="card-img-top p-3"
-                src={product.image}
+                src={product.thumbnail || product.image}
                 alt={product.title}
-                height={300}
+                height={250}
               />
+
               <div className="card-body">
-                <h5 className="card-title">{product.title.substring(0, 12)}...</h5>
-                <p className="card-text">{product.description.substring(0, 90)}...</p>
+                <h5>{product.title.substring(0, 15)}...</h5>
+                <p>{product.description.substring(0, 80)}...</p>
               </div>
-              <ul className="list-group list-group-flush">
-                <li className="list-group-item lead">$ {product.price}</li>
+
+              <ul className="list-group">
+                <li className="list-group-item">₹ {product.price}</li>
               </ul>
+
               <div className="card-body">
-                <Link to={"/product/" + product.id} className="btn btn-dark m-1">
-                  Buy Now
-                </Link>
-                <button className="btn btn-dark m-1" onClick={() => addProduct(product)}>
+                {/* 🔥 BUY NOW FIX */}
+
+
+                <button
+                  className="btn btn-dark w-100"
+                  onClick={() => addProduct(product)}
+                >
                   Add to Cart
                 </button>
               </div>
+
             </div>
           </div>
         ))}
@@ -142,13 +137,9 @@ const Products = () => {
   };
 
   return (
-    <div className="container my-3 py-3">
-      <div className="row">
-        <div className="col-12">
-          <h2 className="display-5 text-center">Latest Products</h2>
-          <hr />
-        </div>
-      </div>
+    <div className="container py-3">
+      <h2 className="text-center">Latest Products</h2>
+      <hr />
       <div className="row justify-content-center">
         {loading ? <Loading /> : <ShowProducts />}
       </div>
